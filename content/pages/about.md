@@ -21,12 +21,12 @@ Kotlin 기반 Android 앱·SDK 개발 경험이 있습니다. 하드웨어 연�
 
 ## 기술 스택
 
-**MLOps / Backend**
+MLOps / Backend
 
 Kubernetes · GPU/MIG · Kong · Kafka · Jenkins · Argo CD · Prometheus · Grafana · Loki · FastAPI ·
 Terraform · AWS(EKS, HPA, Karpenter) · Redis · PostgreSQL · Docker
 
-**Android**
+Android
 
 Kotlin · Java · C++(JNI) · Python · Jetpack Compose · Coroutine · Room · CameraX · ExoPlayer ·
 NFC · Bluetooth · MediaRecorder · Firebase · MLKit

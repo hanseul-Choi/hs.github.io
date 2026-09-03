@@ -16,17 +16,17 @@ D 건설사 건설 현장에서는 한국인 관리자가 아침 안전조례와
 코드로 접속해 자신의 언어를 선택할 수 있다. 관리자의 음성은 약 0.6초 단위로 처리되며, 건설 현장
 전문용어의 번역 정확도를 높이기 위해 건설 용어집 기반 RAG를 번역 과정에 적용했다.
 
-프로젝트는 시범 운영을 거쳐 실제 서비스로 전환됐으며, 현재 약 5개 건설 현장에서 약 2,000명이
-사용하고 있다. 초기 목표인 동시 접속 8,000명을 기준으로 부하 테스트를 수행했고, 향후 16,000명까지
-확장할 수 있도록 인프라를 설계했다.
+**프로젝트는 시범 운영을 거쳐 실제 서비스로 전환됐으며, 현재 여러 건설 현장에서 수천 명 규모가
+사용하고 있다.** 목표 동시 접속 규모를 기준으로 부하 테스트를 수행했고, 향후 더 큰 규모로 확장할
+수 있도록 인프라를 설계했다.
 
 ## 역할
 
 프론트엔드 1명, 백엔드 1명, 인프라 2명, PM 1명으로 구성된 5인 프로젝트에서 인프라 담당으로
-참여했다. AWS 계정과 기존 H200 모델 서버를 제외한 **AWS 인프라, EKS, CI/CD, 모니터링, Redis,
-PostgreSQL 운영 환경을 처음부터 설계하고 구축**했다.
+참여했다. AWS 계정과 기존 H200 모델 서버를 제외한 AWS 인프라, EKS, CI/CD, 모니터링, Redis,
+PostgreSQL 운영 환경을 처음부터 설계하고 구축했다.
 
-**직접 수행한 업무**
+직접 수행한 업무
 
 - 전체 AWS 및 Kubernetes 아키텍처 설계
 - Terraform 기반 VPC, Subnet, NAT Gateway, EKS, Node Group, Bastion, ECR, ALB, NLB, WAF, Route 53, IAM 구성
@@ -41,7 +41,7 @@ PostgreSQL 운영 환경을 처음부터 설계하고 구축**했다.
 - Artillery 기반 8,000명 동시 접속 부하 테스트 참여, Pod 메모리 증가 및 WebSocket scale-out 장애 분석
 - H200 모델 서버와 AWS 간 통신을 위한 NLB·Nginx 및 고정 IP 경로 구성
 
-**협업한 업무**
+협업한 업무
 
 - 백엔드의 WebSocket 상태 공유 및 Redis 적용
 - 자체 STT 모델과 AWS 서비스 간 연동, 건설 용어집 기반 번역 RAG 적용
@@ -55,7 +55,7 @@ PostgreSQL 운영 환경을 처음부터 설계하고 구축**했다.
 AWS와 사내 인프라(H200 모델 서버) 두 영역으로 나뉜다. (고객사 리소스 이름은 "D 건설사" 익명
 처리 방침에 맞춰 `client-*`, 도메인은 `example.com`으로 가렸다.)
 
-**AWS 쪽 — 관리자 웹 진입 경로**
+AWS 쪽 — 관리자 웹 진입 경로
 
 1. 사용자는 Route 53 → AWS WAF(IP·지역·SQL Injection 차단) → Public ALB를 거쳐 Private EKS
    Cluster로 들어온다.
@@ -67,14 +67,14 @@ AWS와 사내 인프라(H200 모델 서버) 두 영역으로 나뉜다. (고객�
 4. 운영 접근은 SSM 기반 Bastion Server로, 로그·리소스는 CloudWatch로 모은다.
 5. Private Subnet의 outbound 트래픽은 NAT Gateway의 고정 Elastic IP로 나가 사내망 방화벽을 통과한다.
 
-**사내 인프라 — H200 모델 서버**
+사내 인프라 — H200 모델 서버
 
 - NAT의 고정 IP가 사내 NLB(VIP) → k8s API로 연결되고, 3개 노드(A/B/C)가 각각 전용 중계 서버
   (relay server)와 1:1로 연결된다 (Room별 AWS Backend WebSocket 1개 원칙과 대응).
 - H200 서버에는 STT(2700), NLP(8080) 서비스가 떠 있고, Nginx(7700) 하나가 단일 진입점으로
   두 서비스를 라우팅한다.
 
-**운영 및 배포 구조**
+운영 및 배포 구조
 
 ```
 운영자 PC → AWS SSM → Bastion EC2 → Private EKS API → kubectl / helm
@@ -87,26 +87,26 @@ GitLab → Jenkins 동적 Agent Pod → BuildKit 이미지 빌드 → Amazon ECR
 
 ### 1. HPA 확장 시 WebSocket 상태 불일치
 
-**문제** — 초기에는 WebSocket 방 정보와 연결 상태가 각 Backend Pod의 메모리에 관리됐다. 부하
+문제 — 초기에는 WebSocket 방 정보와 연결 상태가 각 Backend Pod의 메모리에 관리됐다. 부하
 증가로 HPA가 Backend Pod를 여러 개로 확장하자 동일한 방의 사용자 연결이 서로 다른 Pod에
 분산됐고, 각 Pod가 다른 Pod의 방 상태를 알 수 없어 ping 메시지와 번역 결과가 정상 전달되지
 않았다.
 
-**분석** — Artillery 부하 테스트 중 scale-out 시점에 WebSocket 실패를 확인했다. 애플리케이션
+분석 — Artillery 부하 테스트 중 scale-out 시점에 WebSocket 실패를 확인했다. 애플리케이션
 로그에는 명확한 예외가 남지 않았지만, 단일 Pod에서는 정상 동작하고 다중 Pod 환경에서만
 문제가 발생해 Pod 로컬 메모리에 의존한 상태 관리 문제로 판단했다.
 
-**해결** — EKS 내부에 Helm 기반 Redis를 배포하고, Backend가 공통 Room·연결 상태를 공유할 수
+해결 — EKS 내부에 Helm 기반 Redis를 배포하고, Backend가 공통 Room·연결 상태를 공유할 수
 있도록 Redis 접속 환경을 제공했다. Backend 개발자와 Redis endpoint·연결 규격을 조율하고,
 HPA scale-out·scale-in 환경에서 WebSocket 연결과 메시지 전달을 재검증했다.
 
-**결과** — Pod가 1개에서 최대 5개까지 확장되는 환경에서도 WebSocket 방 상태와 번역 결과가
+결과 — Pod가 1개에서 최대 5개까지 확장되는 환경에서도 WebSocket 방 상태와 번역 결과가
 정상적으로 전달되는 것을 확인했다. Redis 기반 공유 상태 환경을 구축해 다중 Pod 간 상태
 불일치 문제를 해결했다.
 
 ### 2. 장시간 부하에서 API Pod 메모리 증가
 
-**문제** — 부하 테스트 중 API Pod의 메모리 사용량이 시간에 따라 계속 증가해 평소 대비 약
+문제 — 부하 테스트 중 API Pod의 메모리 사용량이 시간에 따라 계속 증가해 평소 대비 약
 3배 수준까지, limit에 거의 도달할 정도로 늘어나는 현상을 확인했다. Backend Pod에는 아래와
 같은 resource 제한이 적용돼 있었고, 증가가 지속되면 HPA 확장과 서비스 불안정으로 이어질
 가능성이 있었다.
@@ -121,89 +121,86 @@ resources:
     memory: "512Mi"
 ```
 
-**분석** — Bastion에서 `kubectl top pod`로 Pod별 CPU·메모리를 실시간 확인하고, 개발 환경에서는
+분석 — Bastion에서 `kubectl top pod`로 Pod별 CPU·메모리를 실시간 확인하고, 개발 환경에서는
 `docker stats`로 서비스별 메모리 증가를 추적했다. WebSocket 종료 이후에도 메모리가 정상
 수준으로 반환되지 않는 것을 확인해, 번역 요청·WebSocket 종료 과정에서 일부 버퍼 또는 연결
 객체가 정리되지 않는 것으로 판단했다.
 
-**해결** — WebSocket disconnect·exception 경로에서 연결 객체와 번역 작업을 정리하도록
+해결 — WebSocket disconnect·exception 경로에서 연결 객체와 번역 작업을 정리하도록
 Backend를 수정하고, 종료 후 남아 있는 요청·버퍼 참조를 제거하도록 개선했다. 수정 후 동일
 부하를 재현해 검증하고, Grafana·Prometheus로 Pod 리소스 변화를 지속 확인할 수 있도록 구성했다.
 
-**결과** — 평소 대비 약 3배까지 늘어 limit에 근접했던 메모리 사용량이 부하 종료 이후 정상
+결과 — 평소 대비 약 3배까지 늘어 limit에 근접했던 메모리 사용량이 부하 종료 이후 정상
 수준으로 회복되는 것을 확인했으며, OOMKilled로 이어지기 전 메모리 누수 가능성을 발견하고
 개선했다.
 
-### 3. 8,000명 동시 접속 WebSocket 부하 검증
+### 3. 대규모 동시 접속 WebSocket 부하 검증
 
-**문제** — 여러 건설 현장에서 동시에 사용될 예정이었고, 고객 요구사항으로 최대 8,000명의
-동시 접속을 안정적으로 처리해야 했다. 한 방에는 최대 200명이 접속하고, 총 40개 방에서 음성
-인식과 번역 결과가 실시간으로 전달되는 구조였다.
+문제 — 여러 건설 현장에서 동시에 사용될 예정이었고, 고객 요구사항으로 대규모 동시 접속을
+안정적으로 처리해야 했다. 한 방에는 최대 200명이 접속하고, 총 40개 방에서 음성 인식과 번역
+결과가 실시간으로 전달되는 구조였다.
 
-**해결** — Artillery로 WebSocket 연결과 실제 번역 요청 부하를 생성해 40개 방에 방당 200명을
-접속시켜 총 8,000명 동시 접속을 테스트했다. 0.6초 단위 음성 데이터와 실제 번역 API 호출을
+해결 — Artillery로 WebSocket 연결과 실제 번역 요청 부하를 생성해 40개 방에 방당 200명을
+접속시켜 대규모 동시 접속을 테스트했다. 0.6초 단위 음성 데이터와 실제 번역 API 호출을
 포함해 1시간 이상 연결을 유지하며 검증했다. HPA는 CPU·메모리 사용률 80% 기준으로 Backend
 Pod를 최소 1개~최대 5개까지 자동 확장하고, 수용량이 부족하면 Karpenter가 app Node를 최대
 3대까지 확장하도록 구성했다. 부하 종료 후에는 약 30분의 안정화 시간을 두고 scale-in되도록
 설정했다.
 
-**결과** — `40개 방 × 방당 200명`의 총 8,000명 동시 접속 환경에서 WebSocket 연결 및 실제
-번역 결과 전달을 검증했다. 고객 요구사항인 3초 이내 전달 기준을 충족했고, 테스트 환경에서는
+결과 — 다수의 방에 대규모 인원이 동시 접속하는 환경에서 WebSocket 연결 및 실제 번역
+결과 전달을 검증했다. 고객 요구사항인 3초 이내 전달 기준을 충족했고, 테스트 환경에서는
 대부분 약 1초 이내에 번역 결과가 전달됨을 확인했다.
 
 ### 4. Private EKS와 외부 모델 서버 간 고정 통신 경로 구축
 
-**문제** — AWS 서비스와 사내 H200 모델 서버 간 통신이 필요했지만, 사내 방화벽은 허용된 고정
+문제 — AWS 서비스와 사내 H200 모델 서버 간 통신이 필요했지만, 사내 방화벽은 허용된 고정
 IP와 제한된 포트만 열 수 있었다. 또한 향후 다른 고객사에 서비스를 제공할 경우 고객사별 AWS
 인프라는 새로 생성하되, 사내 중계 서버와 H200 모델 서버는 공통으로 사용해야 했다.
 
-**해결** — Private Subnet의 outbound 통신을 NAT Gateway의 Elastic IP 하나로 고정하고, 사내
+해결 — Private Subnet의 outbound 통신을 NAT Gateway의 Elastic IP 하나로 고정하고, 사내
 방화벽에 이 고정 NAT IP를 허용하도록 구성했다. NLB로 고정된 inbound 연결 경로를 제공하고,
 사내 중계 서버를 AWS와 H200 사이의 공통 연결 계층으로 설계했다. H200 서버에는 제한된 포트
 하나만 개방하고 Nginx로 STT·NLP 요청을 내부 서비스에 라우팅했다. 고객사별 인프라는 Terraform
 변수만 변경해 재구축할 수 있도록 모듈화했다.
 
-**결과** — 고객사별 AWS 환경을 독립적으로 배포하면서도 기존 중계 서버 및 H200 모델 인프라를
+결과 — 고객사별 AWS 환경을 독립적으로 배포하면서도 기존 중계 서버 및 H200 모델 인프라를
 재사용할 수 있는 구조를 구축했다.
 
 ### 5. 워크로드 특성에 따른 EKS 노드 격리
 
-**문제** — 일반 서비스, PostgreSQL, Jenkins 빌드는 CPU·메모리 사용 특성이 서로 달랐다. 특히
+문제 — 일반 서비스, PostgreSQL, Jenkins 빌드는 CPU·메모리 사용 특성이 서로 달랐다. 특히
 Jenkins 빌드나 DB 부하가 실시간 WebSocket 서비스와 같은 노드에서 발생하면 서비스 안정성에
 영향을 줄 수 있었고, PostgreSQL의 EBS PVC는 가용 영역에 종속되므로 노드 재배치도 고려해야 했다.
 
-**해결** — 노드 그룹을 `app`(Frontend·Backend·WebSocket 등 일반 서비스), `app-db`(PostgreSQL·
+해결 — 노드 그룹을 `app`(Frontend·Backend·WebSocket 등 일반 서비스), `app-db`(PostgreSQL·
 PgBouncer 전용), `build`(Jenkins·ArgoCD 등 빌드)로 분리했다. 각 노드 그룹에 label·taint를
 적용하고 Helm values의 toleration·node affinity로 Pod 배치를 강제했다. PostgreSQL은 EBS
 PVC의 AZ 종속성을 고려해 app-db 노드를 특정 AZ에 고정했다.
 
-**결과** — 빌드·DB·실시간 서비스 간 자원 경합을 줄이고, 각 워크로드의 확장·장애 범위를 분리했다.
+결과 — 빌드·DB·실시간 서비스 간 자원 경합을 줄이고, 각 워크로드의 확장·장애 범위를 분리했다.
 
 ### 6. CloudWatch 비용을 고려한 관측 환경 구축
 
-**문제** — EKS 및 Pod 로그를 CloudWatch에 장기간 저장할 경우 운영 비용이 증가할 것으로 예상됐다.
+문제 — EKS 및 Pod 로그를 CloudWatch에 장기간 저장할 경우 운영 비용이 증가할 것으로 예상됐다.
 
-**해결** — Prometheus로 Pod·Node 메트릭을 수집하고 Grafana 대시보드로 CPU·메모리·Pod 상태를
+해결 — Prometheus로 Pod·Node 메트릭을 수집하고 Grafana 대시보드로 CPU·메모리·Pod 상태를
 확인했다. Alloy로 로그를 수집하고 Loki로 저장·검색했으며, Jenkins·ArgoCD와 함께 build
 노드에 운영 도구를 배치했다.
 
-**결과** — CloudWatch 의존도를 줄이면서, 애플리케이션 로그와 Pod 모니터링을 자체 환경
+결과 — CloudWatch 의존도를 줄이면서, 애플리케이션 로그와 Pod 모니터링을 자체 환경
 (Prometheus·Grafana·Loki·Alloy)에서 확인할 수 있는 체계를 구축했다.
 
 ## 성과
 
-- D 건설사 외국인 근로자를 위한 실시간 음성 번역 서비스의 AWS 인프라를 Terraform으로 처음부터 구축
-- 시범 운영 이후 실제 서비스로 전환되어 약 5개 현장, 약 2,000명 사용
+- 건설 현장 외국인 근로자를 위한 실시간 음성 번역 서비스의 AWS 인프라를 Terraform으로 처음부터 구축
+- 시범 운영 이후 실제 서비스로 전환되어 여러 현장, 수천 명 규모가 사용
 - 약 20개 언어의 실시간 STT·번역 결과 제공, 건설 전문용어 번역을 위한 용어집 기반 RAG 연동
-- `40개 방 × 200명` 기준 8,000명 동시 WebSocket 부하 테스트 통과, 고객 요구사항 3초 이내 전달 충족
-- HPA로 Backend Pod를 1~5개까지 확장, Karpenter로 app Node 최대 3대까지 자동 증설
-- Pod가 1개~5개로 확장되는 환경에서 발생한 WebSocket 상태 불일치를 분석하고 Redis 공유 상태 환경 구축
-- 부하 지속 시 평소 대비 약 3배까지 늘어 limit에 근접했던 Pod 메모리 증가 현상을 모니터링으로
-  발견하고 WebSocket·번역 요청 cleanup 개선으로 정상 수준까지 회복시킴
+- 대규모 동시 WebSocket 부하 테스트 통과, 고객 요구사항인 3초 이내 전달 기준 충족
+- HPA·Karpenter 기반 Pod/Node 자동 확장 구성, WebSocket 상태 불일치를 Redis 공유 상태 환경으로 해결
+- 부하 지속 시 발생한 Pod 메모리 증가 현상을 모니터링으로 발견하고 cleanup 로직 개선으로 해결
 - EKS API를 private only로 구성, SSM Bastion을 통한 운영 접근 적용
-- NAT Elastic IP로 사내 H200 모델 서버와의 outbound IP 고정
 - 일반 서비스·PostgreSQL·빌드 워크로드를 3개 전용 노드 그룹(app/app-db/build)으로 격리
-- Jenkins·ECR·ArgoCD 기반 CI/CD 및 롤백 체계, Prometheus·Grafana·Loki·Alloy 기반 모니터링 구축
+- Jenkins·ECR·ArgoCD 기반 CI/CD 및 롤백 체계, Prometheus·Grafana·Loki·Alloy 기반 자체 모니터링 구축
 - 고객사별 AWS 환경을 Terraform 변수 변경으로 재사용할 수 있는 구조 설계
 
 ## 회고
@@ -219,15 +216,9 @@ PostgreSQL을 EKS 내부 단일 Pod로 운영하는 등 가용성보다 비용�
 
 향후 개선한다면 다음을 적용하고 싶다.
 
-- Terraform state를 S3 backend로 이전하고 state locking 적용
-- 개발·검증·운영 환경별 tfvars 및 state 분리
-- NAT Gateway 다중 AZ 구성 또는 VPC Endpoint 확대
-- PostgreSQL을 Amazon Aurora(PostgreSQL 호환)로 전환해 고가용성 확보
-- Redis 고가용성 및 영속화 정책 구성
-- ArgoCD image updater 또는 승인 기반 이미지 태그 자동화
-- 번역 지연, WebSocket 연결 수, 메시지 누락률을 정량화한 SLI·SLO 구성
-- SLI·SLO 지표를 Prophet·LSTM 기반 시계열 예측에 활용해 트래픽·번역 지연을 사전 예측하고,
-  부하가 몰리기 전에 HPA·Karpenter가 미리 확장하는 동적 오토스케일링(AIOps) 도입
-- 장애 발생 시 로그·메트릭을 자동 분석해 초기 장애보고서를 생성하고, 재기동·캐시 정리 같은
-  반복적인 운영 작업도 AIOps로 처리하는 체계 구축
-- 16,000명 확장을 위한 다중 H200 모델 서버와 중계 서버 확장 전략 수립
+- Terraform state를 S3 backend로 이전하고 환경별(tfvars/state) 분리, state locking 적용
+- NAT Gateway 다중 AZ 구성, PostgreSQL Aurora 전환과 Redis 고가용성 확보로 인프라 이중화
+- ArgoCD image updater 등 배포 자동화 고도화
+- 번역 지연·WebSocket 연결 수·메시지 누락률 SLI·SLO 정의, 시계열 예측 기반 사전
+  오토스케일링(AIOps) 도입
+- 향후 확장을 위한 다중 H200 모델 서버와 중계 서버 확장 전략 수립
